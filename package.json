@@ -1,0 +1,16 @@
+{
+  "name": "ddei-autolink",
+  "version": "1.0.0",
+  "description": "动态生成连线路径",
+  "main": "autolink.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ddei",
+    "autolink",
+    "line"
+  ],
+  "author": "hoslay",
+  "license": "Apache License 2.0"
+}
