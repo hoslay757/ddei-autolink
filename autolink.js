@@ -10,6 +10,7 @@
    * @param extConfig.recomWeight 推荐路径权重，默认100
    */
 const calAutoLinePath = function (sd, ed, obis, extConfig) {
+  let startTime = new Date().getTime()
   if (!sd.direct) {
     //开始方向和结束方向
     sd.direct = 3;
@@ -211,10 +212,11 @@ const calAutoLinePath = function (sd, ed, obis, extConfig) {
       arr.push(point)
     }
   })
+  let buildPointTime = new Date().getTime()
   let successPaths = []
   //2.寻路,沿开始点，向开始方向开始寻路，横向用xIndex纵向用yIndex
   getLookForPath(null, sd.point, ed.point, 0, outRects, xIntIndex, yIntIndex, 0, 0, 'root', [], successPaths)
-
+  let lookForTime = new Date().getTime()
   //3.选择最佳路径，转弯较少>权重>路径长度>路径差异
   let minTurnNum = -1, minDistance = -1, maxPrio = 0
   let candidatePaths = []
@@ -316,7 +318,9 @@ const calAutoLinePath = function (sd, ed, obis, extConfig) {
     pathPoints = newPaths[bestI]
   }
 
-  return { corssPoints: corssPoints, pathPoints: pathPoints, extLines: extLines }
+  let endTime = new Date().getTime()
+
+  return { corssPoints: corssPoints, pathPoints: pathPoints, extLines: extLines,totalTime:endTime-startTime,lookForTime:lookForTime-buildPointTime,selectPathTime:endTime-lookForTime,buildPointTime:buildPointTime-startTime }
 }
 
 /**

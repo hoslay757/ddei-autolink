@@ -1,16 +1,21 @@
 {
   "name": "ddei-autolink",
   "version": "1.0.0",
-  "description": "动态生成连线路径",
+  "description": "该包用于在两个图形之间生成链接路径，实现自动连线功能、并返回中间节点。This package is used to generate link paths between two graphics, achieve automatic connection function, and return path's nodes.",
   "main": "autolink.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
   "keywords": [
     "ddei",
     "autolink",
     "line"
   ],
-  "author": "hoslay",
+  "repository": {
+    "type": "git",
+    "url": "https://gitee.com/hoslay/ddei-autolink"
+  },
+  "bugs": {
+    "url": "https://gitee.com/hoslay/ddei-autolink",
+    "email": "3697355039@qq.com"
+  },
+  "author": "hoslay <3697355039@qq.com>",
   "license": "Apache License 2.0"
 }
