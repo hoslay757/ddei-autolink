@@ -48,9 +48,12 @@ const calAutoLinePath = function (sd, ed, obis, extConfig) {
   //1.根据交叉点生成寻路表格
   let corssPoints = []
 
-  ed.point.isEnd = true
-  sd.point.isStart = true
 
+  ed.point.isEnd = true
+  ed.point.direct = ed.direct
+  sd.point.direct = sd.direct
+  sd.point.isStart = true
+  //计算开始
   corssPoints.push(sd.point)
   corssPoints.push(ed.point)
 
@@ -160,6 +163,8 @@ const calAutoLinePath = function (sd, ed, obis, extConfig) {
   corssPoints.forEach(point => {
     let intX = parseInt(point.x);
     let intY = parseInt(point.y);
+    point.intX = intX
+    point.intY = intY
     if (!yIntIndex[intY]) {
       yIntIndex[intY] = []
     }
@@ -253,23 +258,23 @@ const calAutoLinePath = function (sd, ed, obis, extConfig) {
       let cp = paths[j]
 
       if (!d) {
-        if (parseInt(cp.x) == parseInt(upSX) && parseInt(cp.y) == parseInt(upSY)) {
+        if (cp.intX == parseInt(upSX) && cp.intY == parseInt(upSY)) {
 
         }
-        else if (parseInt(cp.x) == parseInt(upSX)) {
+        else if (cp.intX == parseInt(upSX)) {
           d = 2
-        } else if (parseInt(cp.y) == parseInt(upSY)) {
+        } else if (cp.intY == parseInt(upSY)) {
           d = 1
         }
       } else if (d == 1) {
-        if (parseInt(cp.y) != parseInt(upSY)) {
+        if (cp.intY != parseInt(upSY)) {
           d = 2
           upSX = cp.x
           upSY = cp.y
           newPath.push({ x: upX, y: upY })
         }
       } else if (d == 2) {
-        if (parseInt(cp.x) != parseInt(upSX)) {
+        if (cp.intX != parseInt(upSX)) {
           d = 1
           upSX = cp.x
           upSY = cp.y
@@ -279,7 +284,7 @@ const calAutoLinePath = function (sd, ed, obis, extConfig) {
       upX = cp.x
       upY = cp.y
     }
-    if (parseInt(upX) != parseInt(newPath[newPath.length - 1].x) || parseInt(upY) != parseInt(newPath[newPath.length - 1].y)) {
+    if (parseInt(upX) != newPath[newPath.length - 1].intX || parseInt(upY) != newPath[newPath.length - 1].intY) {
       newPath.push({ x: upX, y: upY })
     }
     newPaths.push(newPath)
@@ -294,7 +299,7 @@ const calAutoLinePath = function (sd, ed, obis, extConfig) {
         //找到切割最均匀的路径,这里必然path>2
         let maxDiffY = 0, maxDiffX = 0
         //第一根线是横线还是竖线
-        let d = parseInt(paths[0].x) == parseInt(paths[1].x) ? 2 : 1
+        let d = paths[0].intX == paths[1].intX ? 2 : 1
         for (let j = 2; j < paths.length; j++) {
           //第一根线是竖线，比较y增量
           if (d == 2) {
@@ -320,7 +325,7 @@ const calAutoLinePath = function (sd, ed, obis, extConfig) {
 
   let endTime = new Date().getTime()
 
-  return { corssPoints: corssPoints, pathPoints: pathPoints, extLines: extLines,totalTime:endTime-startTime,lookForTime:lookForTime-buildPointTime,selectPathTime:endTime-lookForTime,buildPointTime:buildPointTime-startTime }
+  return { corssPoints: corssPoints, pathPoints: pathPoints, extLines: extLines, totalTime: endTime - startTime, lookForTime: lookForTime - buildPointTime, selectPathTime: endTime - lookForTime, buildPointTime: buildPointTime - startTime }
 }
 
 /**
@@ -338,6 +343,9 @@ const calAutoLinePath = function (sd, ed, obis, extConfig) {
  * @param successPaths 成功的路径
  */
 const getLookForPath = function (upPoint, curPoint, endPoint, fromDirect, outRects, xIntIndex, yIntIndex, turnNum, distance, fullpath, passPoints, successPaths) {
+  //判定优先寻路方向
+  let directSortList = [1, 2, 3, 4]
+
   if (!curPoint) {
     return { state: -1, end: 1, fullpath: fullpath };
   }
@@ -345,15 +353,26 @@ const getLookForPath = function (upPoint, curPoint, endPoint, fromDirect, outRec
   if (turnNum >= 5 || turnNum > endPoint.minTurnNum) {
     return { state: -1 };
   }
-  let intX = parseInt(curPoint.x)
-  let intY = parseInt(curPoint.y)
+  let intX = curPoint.intX
+  let intY = curPoint.intY
 
   if (isNaN(intX) || isNaN(intY)) {
     return { state: -1, end: 1, fullpath: fullpath };
   }
   //得到当前点在索引中的坐标
-  let xyIndex = xIntIndex[intX].indexOf(curPoint)
-  let yxIndex = yIntIndex[intY].indexOf(curPoint)
+  let xyIndex = curPoint.xyIndex;
+  if (!xyIndex) {
+    xyIndex = xIntIndex[intX].indexOf(curPoint)
+    curPoint.xyIndex = xyIndex
+  }
+  let yxIndex = curPoint.yxIndex;
+  if (!yxIndex) {
+    yxIndex = yIntIndex[intY].indexOf(curPoint)
+    curPoint.yxIndex = yxIndex
+  }
+
+  let intXEnd = endPoint.intX
+  let intYEnd = endPoint.intY
 
   /*
    * 对当前点进行判定
@@ -374,13 +393,13 @@ const getLookForPath = function (upPoint, curPoint, endPoint, fromDirect, outRec
 
   //4.检测是否遇到障碍
   else if (upPoint) {
-    let obiLine = { x1: parseInt(upPoint.x), y1: parseInt(upPoint.y), x2: intX, y2: intY }
+    let obiLine = { x1: upPoint.intX, y1: upPoint.intY, x2: intX, y2: intY }
     let isCorss = isCorssRect(obiLine, upPoint, curPoint, outRects)
     if (isCorss) {
       return { state: 0, close: 1, fullpath: fullpath };
     }
   } //2.当前节点已到达
-  if (curPoint == endPoint || curPoint.isEnd || parseInt(endPoint.x) == intX && parseInt(endPoint.y) == intY) {
+  if (curPoint == endPoint || curPoint.isEnd || intXEnd == intX && intYEnd == intY) {
     endPoint.minTurnNum = Math.min(endPoint.minTurnNum ? endPoint.minTurnNum : 10, turnNum)
     let prio = 0
     passPoints.forEach(pt => {
@@ -391,95 +410,118 @@ const getLookForPath = function (upPoint, curPoint, endPoint, fromDirect, outRec
   }
 
   //5.除来源方向，其它方向的情况
-
-  //关闭来源方向
-  // switch (fromDirect) {
-  //   case 1: curPoint.upClose = 1; break;
-  //   case 2: curPoint.rightClose = 1; break;
-  //   case 3: curPoint.downClose = 1; break;
-  //   case 4: curPoint.leftClose = 1; break;
-  // }
   //寻找不同来源方向的下一个节点
-  let upClose, rightClose, downClose, leftClose
-  if (!curPoint.upClose) {
-    let nextPointXYIndex = xyIndex - 1
-    if (nextPointXYIndex < 0) {
-      curPoint.upClose = 1
-      upClose = 1
-    } else {
-      let nextPoint = xIntIndex[intX][nextPointXYIndex]
-      //下一次转弯值
-      let nextTurnNum = fromDirect == 0 || fromDirect == 3 ? turnNum : turnNum + 1
-      let nextDistance = distance + (nextPoint ? Math.abs(nextPoint.y - intY) : 0)
-      let nextPointResult = getLookForPath(curPoint, nextPoint, endPoint, 3, outRects, xIntIndex, yIntIndex, nextTurnNum, nextDistance, fullpath + "-up", [...passPoints, curPoint], successPaths)
-      if (nextPointResult?.close == 1 || nextPointResult?.state == -1) {
-        upClose = 1
+  let allClose = true
+  directSortList.forEach(searchDirect => {
+    let isClose = deepLookForByDirect(searchDirect)
+    if (!isClose) {
+      allClose = false
+    }
+  })
+  function deepLookForByDirect (direct) {
+    switch (direct) {
+      case 1: {
+        if (!curPoint.upClose) {
+          let nextPointXYIndex = xyIndex - 1
+          if (nextPointXYIndex < 0) {
+            curPoint.upClose = 1
+            return 1
+          } else if (endPoint.direct == 3 && !curPoint.isStart && intYEnd > intY) {
+            curPoint.upClose = 1
+            return 1
+          } else {
+            let nextPoint = xIntIndex[intX][nextPointXYIndex]
+            //下一次转弯值
+            let nextTurnNum = fromDirect == 0 || fromDirect == 3 ? turnNum : turnNum + 1
+            let nextDistance = distance + (nextPoint ? Math.abs(nextPoint.y - intY) : 0)
+            let nextPointResult = getLookForPath(curPoint, nextPoint, endPoint, 3, outRects, xIntIndex, yIntIndex, nextTurnNum, nextDistance, fullpath + "-up", [...passPoints, curPoint], successPaths)
+            if (nextPointResult?.close == 1 || nextPointResult?.state == -1) {
+              return 1
+            }
+          }
+        } else {
+          return 1
+        }
+        break;
+      }
+      case 3: {
+        //向下寻路
+        if (!curPoint.downClose) {
+          let nextPointXYIndex = xyIndex + 1
+          if (nextPointXYIndex >= xIntIndex[intX].length) {
+            curPoint.downClose = 1
+            return 1
+          } else if (endPoint.direct == 1 && !curPoint.isStart && intYEnd < intY) {
+            curPoint.downClose = 1
+            return 1
+          } else {
+            let nextPoint = xIntIndex[intX][nextPointXYIndex]
+            //下一次转弯值
+            let nextTurnNum = fromDirect == 0 || fromDirect == 1 ? turnNum : turnNum + 1
+            let nextDistance = distance + (nextPoint ? Math.abs(nextPoint.y - intY) : 0)
+            let nextPointResult = getLookForPath(curPoint, nextPoint, endPoint, 1, outRects, xIntIndex, yIntIndex, nextTurnNum, nextDistance, fullpath + "-down", [...passPoints, curPoint], successPaths)
+            if (nextPointResult?.close == 1 || nextPointResult?.state == -1) {
+              return 1
+            }
+          }
+        } else {
+          return 1
+        }
+        break;
+      }
+      case 4: {
+        //向左寻路
+        if (!curPoint.leftClose) {
+          let nextPointYXIndex = yxIndex - 1
+          if (nextPointYXIndex < 0) {
+            curPoint.leftClose = 1
+            return 1
+          } else if (endPoint.direct == 2 && !curPoint.isStart && intXEnd > intX) {
+            curPoint.leftClose = 1
+            return 1
+          } else {
+            let nextPoint = yIntIndex[intY][nextPointYXIndex]
+            //下一次转弯值
+            let nextTurnNum = fromDirect == 0 || fromDirect == 2 ? turnNum : turnNum + 1
+            let nextDistance = distance + (nextPoint ? Math.abs(nextPoint.x - intX) : 0)
+            let nextPointResult = getLookForPath(curPoint, nextPoint, endPoint, 2, outRects, xIntIndex, yIntIndex, nextTurnNum, nextDistance, fullpath + "-left", [...passPoints, curPoint], successPaths)
+            if (nextPointResult?.close == 1 || nextPointResult?.state == -1) {
+              return 1
+            }
+          }
+        } else {
+          return 1
+        }
+      }
+      case 2: {
+        //向右寻路
+        if (!curPoint.rightClose) {
+          let nextPointYXIndex = yxIndex + 1
+          if (nextPointYXIndex >= yIntIndex[intY].length) {
+            curPoint.rightClose = 1
+            return 1
+          } else if (endPoint.direct == 4 && !curPoint.isStart && intXEnd < intX) {
+            curPoint.rightClose = 1
+            return 1
+          } else {
+
+            let nextPoint = yIntIndex[intY][nextPointYXIndex]
+            let nextTurnNum = fromDirect == 0 || fromDirect == 4 ? turnNum : turnNum + 1
+            let nextDistance = distance + (nextPoint ? Math.abs(nextPoint.x - intX) : 0)
+            let nextPointResult = getLookForPath(curPoint, nextPoint, endPoint, 4, outRects, xIntIndex, yIntIndex, nextTurnNum, nextDistance, fullpath + "-right", [...passPoints, curPoint], successPaths)
+            if (nextPointResult?.close == 1 || nextPointResult?.state == -1) {
+              return 1
+            }
+          }
+        } else {
+          return 1
+        }
+        break;
       }
     }
-  } else {
-    upClose = 1
-  }
-  //向下寻路
-  if (!curPoint.downClose) {
-    let nextPointXYIndex = xyIndex + 1
-    if (nextPointXYIndex >= xIntIndex[intX].length) {
-      curPoint.downClose = 1
-      downClose = 1
-    } else {
-      let nextPoint = xIntIndex[intX][nextPointXYIndex]
-      //下一次转弯值
-      let nextTurnNum = fromDirect == 0 || fromDirect == 1 ? turnNum : turnNum + 1
-      let nextDistance = distance + (nextPoint ? Math.abs(nextPoint.y - intY) : 0)
-      let nextPointResult = getLookForPath(curPoint, nextPoint, endPoint, 1, outRects, xIntIndex, yIntIndex, nextTurnNum, nextDistance, fullpath + "-down", [...passPoints, curPoint], successPaths)
-      if (nextPointResult?.close == 1 || nextPointResult?.state == -1) {
-        downClose = 1
-      }
-    }
-  } else {
-    downClose = 1
   }
 
-  //向左寻路
-  if (!curPoint.leftClose) {
-    let nextPointYXIndex = yxIndex - 1
-    if (nextPointYXIndex >= yIntIndex[intY].length) {
-      curPoint.leftClose = 1
-      leftClose = 1
-    } else {
-      let nextPoint = yIntIndex[intY][nextPointYXIndex]
-      //下一次转弯值
-      let nextTurnNum = fromDirect == 0 || fromDirect == 2 ? turnNum : turnNum + 1
-      let nextDistance = distance + (nextPoint ? Math.abs(nextPoint.x - intX) : 0)
-      let nextPointResult = getLookForPath(curPoint, nextPoint, endPoint, 2, outRects, xIntIndex, yIntIndex, nextTurnNum, nextDistance, fullpath + "-left", [...passPoints, curPoint], successPaths)
-      if (nextPointResult?.close == 1 || nextPointResult?.state == -1) {
-        leftClose = 1
-      }
-    }
-  } else {
-    leftClose = 1
-  }
-
-  //向右寻路
-  if (!curPoint.rightClose) {
-    let nextPointYXIndex = yxIndex + 1
-    if (nextPointYXIndex >= yIntIndex[intY].length) {
-      curPoint.rightClose = 1
-      rightClose = 1
-    } else {
-
-      let nextPoint = yIntIndex[intY][nextPointYXIndex]
-      let nextTurnNum = fromDirect == 0 || fromDirect == 4 ? turnNum : turnNum + 1
-      let nextDistance = distance + (nextPoint ? Math.abs(nextPoint.x - intX) : 0)
-      let nextPointResult = getLookForPath(curPoint, nextPoint, endPoint, 4, outRects, xIntIndex, yIntIndex, nextTurnNum, nextDistance, fullpath + "-right", [...passPoints, curPoint], successPaths)
-      if (nextPointResult?.close == 1 || nextPointResult?.state == -1) {
-        rightClose = 1
-      }
-    }
-  } else {
-    rightClose = 1
-  }
-
-  if (upClose && downClose && leftClose && rightClose) {
+  if (allClose) {
     return { state: -1, close: 1, fullpath: fullpath };
   }
 
@@ -520,6 +562,8 @@ const genSEExtLine = function (ed, corssPoints, extLines) {
       break;
   }
 }
+
+
 
 /**
  * 返回某个点，相对于该图形的角度
@@ -603,8 +647,8 @@ const isCorssRect = function (obiLine, spt, ept, outRects) {
       if (!ept.isEnd && !spt.isStart) {
         return true
       } else {
-        if (ept.isEnd && parseInt(ept.y) == l2.y2 && parseInt(spt.y) < l2.y2) {
-        } else if (spt.isStart && parseInt(spt.y) == l2.y2 && parseInt(ept.y) < l2.y2) {
+        if (ept.isEnd && ept.intY == l2.y2 && spt.intY < l2.y2) {
+        } else if (spt.isStart && spt.intY == l2.y2 && ept.intY < l2.y2) {
         } else {
           return true;
         }
@@ -616,8 +660,8 @@ const isCorssRect = function (obiLine, spt, ept, outRects) {
       if (!ept.isEnd && !spt.isStart) {
         return true
       } else {
-        if (ept.isEnd && parseInt(ept.y) == l2.y2 && parseInt(spt.y) > l2.y2) {
-        } else if (spt.isStart && parseInt(spt.y) == l2.y2 && parseInt(ept.y) > l2.y2) {
+        if (ept.isEnd && ept.intY == l2.y2 && spt.intY > l2.y2) {
+        } else if (spt.isStart && spt.intY == l2.y2 && ept.intY > l2.y2) {
         } else {
           return true;
         }
@@ -629,8 +673,8 @@ const isCorssRect = function (obiLine, spt, ept, outRects) {
       if (!ept.isEnd && !spt.isStart) {
         return true
       } else {
-        if (ept.isEnd && parseInt(ept.x) == l2.x2 && parseInt(spt.x) < l2.x2) {
-        } else if (spt.isStart && parseInt(spt.x) == l2.x2 && parseInt(ept.x) < l2.x2) {
+        if (ept.isEnd && ept.intX == l2.x2 && spt.intX < l2.x2) {
+        } else if (spt.isStart && spt.intX == l2.x2 && ept.intX < l2.x2) {
         } else {
           return true;
         }
@@ -642,8 +686,8 @@ const isCorssRect = function (obiLine, spt, ept, outRects) {
       if (!ept.isEnd && !spt.isStart) {
         return true
       } else {
-        if (ept.isEnd && parseInt(ept.x) == l2.x2 && parseInt(spt.x) > l2.x2) {
-        } else if (spt.isStart && parseInt(spt.x) == l2.x2 && parseInt(ept.x) > l2.x2) {
+        if (ept.isEnd && ept.intX == l2.x2 && spt.intX > l2.x2) {
+        } else if (spt.isStart && spt.intX == l2.x2 && ept.intX > l2.x2) {
         } else {
           return true;
         }
