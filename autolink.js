@@ -1287,7 +1287,7 @@ const getMovePath = function (sAngle, eAngle, startPoint, endPoint) {
   * @param endRect 结束点
   * @return 推荐的路径点
   */
-const getRecommendPath = function (sAngle, eAngle, startPoint, endPoint, startRect, endRect) {
+const getRecommendPath = function (sAngle, eAngle, startPoint, endPoint, startRect, endRect, outRect) {
   let recommendPaths = []
   let movePath = getMovePath(sAngle, eAngle, startPoint, endPoint, startRect, endRect)
   if (movePath) {

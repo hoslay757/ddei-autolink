@@ -1,6 +1,6 @@
 {
   "name": "ddei-autolink",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "该包用于在两个图形之间生成链接路径，实现自动连线功能、并返回中间节点。This package is used to generate link paths between two graphics, achieve automatic connection function, and return path's nodes.",
   "main": "autolink.js",
   "keywords": [
